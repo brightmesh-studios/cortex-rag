@@ -1,0 +1,10 @@
+langchain
+langchain-text-splitters
+langchain-chroma
+langchain-ollama
+chromadb
+python-dotenv
+langchain-openai
+fastapi
+uvicorn
+mcp[cli]>=1.27.0

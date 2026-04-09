@@ -1,0 +1,18 @@
+# Virtual environment
+.venv/
+
+# ChromaDB — local vector store, never commit this
+chroma_db/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# Logs
+vault-sync.log
+
+# Mac
+.DS_Store
