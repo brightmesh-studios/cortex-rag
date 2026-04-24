@@ -13,7 +13,7 @@ Usage:
 from mcp.server.fastmcp import FastMCP
 from query import search
 
-mcp = FastMCP("cortex", host="0.0.0.0", port=8000)
+mcp = FastMCP("cortex", host="0.0.0.0", port=18432)
 
 @mcp.tool()
 def search_vault(question: str, top_k: int = 5) -> list[dict]:
