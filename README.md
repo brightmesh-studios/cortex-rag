@@ -34,7 +34,8 @@ Agent has context, development continues
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Fill in VAULT_PATH and OPENROUTER_API_KEY in .env
+# Edit .env and set VAULT_PATH to your Obsidian vault directory
+# Set OPENROUTER_API_KEY to your OpenRouter key
 ```
 
 ### Ingest your vault
@@ -81,10 +82,36 @@ python src/query.py
 python src/ingest.py --changed-only
 ```
 
+### Setup vault-sync script
+
+The vault-sync script automatically formats your vault, commits changes, and re-indexes only changed files.
+
+1. Copy the script to your scripts directory:
+
+```bash
+cp script/vault-sync.sh ~/scripts/vault-sync.sh
+chmod +x ~/scripts/vault-sync.sh
+```
+
+2. Edit `~/scripts/vault-sync.sh` and update both paths:
+
+```bash
+VAULT=/Users/YOUR_USERNAME/path/to/your/obsidian/vault
+RAG=/Users/YOUR_USERNAME/path/to/cortex-rag
+```
+
+3. Test the script:
+
+```bash
+~/scripts/vault-sync.sh
+```
+
 ### Auto-sync via cron
 
+Add to your crontab (`crontab -e`):
+
 ```
-0 */3 * * * /bin/bash /Users/dimez/brightmesh.studio/cortex-rag/vault-sync.sh >> vault-sync.log 2>&1
+0 */3 * * * /bin/bash ~/scripts/vault-sync.sh >> ~/vault-sync.log 2>&1
 ```
 
 ---
@@ -97,7 +124,8 @@ cortex-rag/
 │   ├── ingest.py    — vault reader, chunker, ChromaDB writer
 │   ├── query.py     — semantic search
 │   └── server.py    — MCP server
-├── vault-sync.sh    — git sync + incremental re-index for cron
+├── script/
+│   └── vault-sync.sh  — git sync + incremental re-index script
 ├── .env.example
 ├── requirements.txt
 └── README.md
