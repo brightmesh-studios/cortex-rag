@@ -23,6 +23,18 @@ from dotenv import load_dotenv
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception,
+    before_sleep_log,
+)
+import logging
+
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger("ingest")
 
 
 load_dotenv()
@@ -123,6 +135,50 @@ def get_vectorstore()-> Chroma:
     )
 
 
+def _is_upstream_rate_limit(exc: BaseException) -> bool:
+    """
+    Decide whether an embedding failure is a transient upstream rate limit
+    that is worth retrying.
+
+    OpenRouter proxies embeddings to OpenAI's real API. When the shared
+    upstream pool is throttled, OpenRouter returns an HTTP 200 whose body is
+    an ``{"error": {..., "code": 429}}`` object with no ``data`` array. The
+    OpenAI SDK sees a 200, never triggers its own 429 backoff, fails to find
+    embeddings, and raises ``ValueError("No embedding data received")``.
+
+    We retry on exactly that signature and let every other error fail fast,
+    so a genuinely malformed chunk is not retried six times pointlessly.
+
+    Args:
+        exc (BaseException): The exception raised while embedding.
+
+    Returns:
+        bool: True if the failure looks like a retryable upstream throttle.
+    """
+
+    return isinstance(exc, ValueError) and "no embedding data received" in str(exc).lower()
+
+
+@retry(
+    retry=retry_if_exception(_is_upstream_rate_limit),
+    wait=wait_exponential(multiplier=2, min=2, max=60),
+    stop=stop_after_attempt(6),
+    before_sleep=before_sleep_log(logger, logging.WARNING),
+    reraise=True,
+)
+def _embed_with_retry(vs: Chroma, chunks: list) -> None:
+    """
+    Add chunks to the vector store, retrying transient upstream rate limits
+    with exponential backoff (2s, 4s, 8s … capped at 60s, up to 6 attempts).
+
+    Args:
+        vs (Chroma): The Chroma vector store instance.
+        chunks (list): The document chunks to embed and persist.
+    """
+
+    vs.add_documents(chunks)
+
+
 def ingest_file(vs: Chroma, path: Path) -> int:
     """
     Ingest a markdown file into the Chroma vector store.
@@ -133,15 +189,31 @@ def ingest_file(vs: Chroma, path: Path) -> int:
 
     Returns:
         int: The number of chunks ingested from the file.
+
+    Raises:
+        RuntimeError: If embedding still fails after all retry attempts,
+            with guidance on the likely cause.
     """
-    
+
     chunks = chunk_file(path)
 
     if not chunks:
         print(f"No chunks: {path.name}")
         return 0
-    
-    vs.add_documents(chunks)
+
+    try:
+        _embed_with_retry(vs, chunks)
+    except ValueError as exc:
+        if _is_upstream_rate_limit(exc):
+            raise RuntimeError(
+                f"Embedding '{path.relative_to(VAULT_PATH)}' failed after 6 retries: "
+                f"OpenRouter kept returning an empty/throttled response "
+                f"(upstream OpenAI rate limit on '{EMBED_MODEL}'). "
+                f"This is transient — re-run 'python src/ingest.py --changed-only' shortly, "
+                f"or point embeddings directly at api.openai.com to avoid the shared pool."
+            ) from exc
+        raise
+
     print(f"{len(chunks)} chunks — {path.relative_to(VAULT_PATH)}")
 
     return len(chunks)
