@@ -30,6 +30,7 @@
     01-projects/capsul: capsul
     01-projects/pantrypal: pantrypal
     01-projects/yule-financials: yule
+    01-projects/cortex-rag: cortex-rag
   # Superseded planning notes. Still indexed — the history has value — but
   # demoted at query time, because an archived PayFast plan was outranking the
   # current billing reference.
