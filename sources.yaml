@@ -1,0 +1,67 @@
+# Ingestion sources for the Cortex index.
+#
+# Each entry becomes one walked directory. `project` and `source_type` are
+# written onto every chunk, which is what lets search be scoped (and what lets
+# an unscoped query self-route: PMS chunks simply outscore the rest).
+#
+# `include`/`exclude` use globset syntax, matched against the path relative to
+# `path`. Exclusions always win over inclusions, and the global secret denylist
+# in src/sources.py is appended to every source's excludes — no include pattern
+# here can pull a secret in.
+
+- name: cortex-vault
+  path: /Users/dimez/brightmesh.studio/cortex
+  # Fallback for cross-cutting PARA folders (00-inbox, 02-areas, 03-resources):
+  # material that belongs to no single project.
+  project: shared
+  source_type: note
+  include:
+    - "**/*.md"
+  exclude:
+    - "00-templates/**"
+    - "**/.obsidian/**"
+  # Derived per file from the PARA path. Folder names differ from the project
+  # slugs used by the code sources, so the mapping is explicit rather than
+  # inferred — brightmesh-pms notes and the lema-financials-mono repo must land
+  # on the same `pms` tag for a scoped search to span both.
+  project_map:
+    01-projects/brightmes-pms: pms
+    04-archive/brightmes-pms: pms
+    01-projects/capsul: capsul
+    01-projects/pantrypal: pantrypal
+    01-projects/yule-financials: yule
+  # Superseded planning notes. Still indexed — the history has value — but
+  # demoted at query time, because an archived PayFast plan was outranking the
+  # current billing reference.
+  archived_prefixes:
+    - "04-archive/"
+
+# The PMS monorepo — the code the vault's architecture and billing notes
+# describe (apps/api/src/billing/, apps/api/src/common/payfast/, …).
+- name: brightmesh-pms
+  path: /Users/dimez/brightmesh.studio/lema-financials-mono
+  project: pms
+  source_type: code
+  repo: lema-financials-mono
+  include:
+    - "apps/**/*.ts"
+    - "apps/**/*.tsx"
+    - "packages/**/*.ts"
+    - "packages/**/*.tsx"
+    - "**/*.prisma"
+    - "**/*.md"
+    - "infra/**/*.tf"
+  exclude:
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/.next/**"
+    - "**/.turbo/**"
+    - "**/coverage/**"
+    - "**/*.d.ts"
+    - "**/CHANGELOG.md"
+    # Generated clients (Prisma) are derived artefacts, not knowledge — and one
+    # generated file emits a single 42 KB indivisible chunk that no embedding
+    # model will accept.
+    - "**/generated/**"
+    - "**/*.generated.*"

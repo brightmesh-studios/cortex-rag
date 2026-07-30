@@ -16,3 +16,6 @@ vault-sync.log
 
 # Mac
 .DS_Store
+
+# CocoIndex incremental-sync + memoization state — derived, always rebuildable
+cocoindex_state/

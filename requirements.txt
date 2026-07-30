@@ -1,10 +1,18 @@
+cocoindex==1.0.18
+asyncpg==0.31.0
+openai
+tenacity
+numpy
+pyyaml
+python-dotenv
+mcp[cli]>=1.27.0
+fastapi
+uvicorn
+
+# Legacy Chroma pipeline (ingest.py) — dropped once the CocoIndex path is cut over
 langchain
 langchain-text-splitters
 langchain-chroma
 langchain-ollama
-chromadb
-python-dotenv
 langchain-openai
-fastapi
-uvicorn
-mcp[cli]>=1.27.0
+chromadb
