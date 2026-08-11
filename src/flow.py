@@ -282,7 +282,7 @@ def _cap_size(chunks: list) -> list[tuple[str, int]]:
     return capped
 
 
-@coco.fn
+@coco.fn(memo=True)
 async def process_file(
     file: localfs.File,
     source: Source,
@@ -291,8 +291,8 @@ async def process_file(
     """
     Split one file into chunks, embed each, and declare the resulting rows.
 
-    Not memoized itself — splitting is cheap, and the expensive step (embedding)
-    is memoized inside the embedder, so unchanged chunks never hit the API.
+    Memoized on the file: localfs.File keys on mtime, falling back to a content
+    fingerprint, so an unchanged file is never read or split.
     """
     rel_path = str(file.file_path.relative_to(source.path))
     language = detect_code_language(filename=file.file_path.name)
