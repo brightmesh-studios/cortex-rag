@@ -44,6 +44,23 @@ SECRET_DENYLIST = [
     "**/.git/**",
 ]
 
+# Derived output. Code sources only — the vault is prose, and a note named
+# CHANGELOG.md would be dropped.
+DERIVED_DENYLIST = [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.next/**",
+    "**/.turbo/**",
+    "**/coverage/**",
+    "**/*.d.ts",
+    "**/CHANGELOG.md",
+    "**/generated/**",
+    "**/*.generated.*",
+    "**/openwiki/**",
+    "**/graphify-out/**",
+]
+
 CONFIG_PATH = Path(os.getenv("SOURCES_CONFIG", Path(__file__).parent.parent / "sources.yaml"))
 
 
@@ -84,10 +101,14 @@ class Source:
         return rel_path.startswith(self.archived_prefixes) if self.archived_prefixes else False
 
     def matcher(self) -> PatternFilePathMatcher:
-        """Build the file matcher, with the secret denylist appended to excludes."""
+        """Build the file matcher, with the shared denylists appended to excludes."""
+        shared = SECRET_DENYLIST
+        if self.source_type == "code":
+            shared = [*DERIVED_DENYLIST, *shared]
+
         return PatternFilePathMatcher(
             included_patterns=list(self.include) or ["**/*"],
-            excluded_patterns=[*self.exclude, *SECRET_DENYLIST],
+            excluded_patterns=[*self.exclude, *shared],
         )
 
 

@@ -7,7 +7,8 @@
 # `include`/`exclude` use globset syntax, matched against the path relative to
 # `path`. Exclusions always win over inclusions, and the global secret denylist
 # in src/sources.py is appended to every source's excludes — no include pattern
-# here can pull a secret in.
+# here can pull a secret in. Code sources also inherit DERIVED_DENYLIST, so
+# `exclude` here carries only what is specific to that repository.
 
 - name: cortex-vault
   path: /Users/dimez/brightmesh.studio/cortex
@@ -52,17 +53,59 @@
     - "**/*.prisma"
     - "**/*.md"
     - "infra/**/*.tf"
+
+- name: capsul
+  path: /Users/dimez/brightmesh.studio/capsule.afrika
+  project: capsul
+  source_type: code
+  repo: capsule.afrika
+  include:
+    - "apps/**/*.ts"
+    - "apps/**/*.tsx"
+    - "packages/**/*.ts"
+    - "packages/**/*.tsx"
+    - "**/*.prisma"
+    - "**/*.md"
   exclude:
-    - "**/node_modules/**"
-    - "**/dist/**"
-    - "**/build/**"
-    - "**/.next/**"
-    - "**/.turbo/**"
-    - "**/coverage/**"
-    - "**/*.d.ts"
-    - "**/CHANGELOG.md"
-    # Generated clients (Prisma) are derived artefacts, not knowledge — and one
-    # generated file emits a single 42 KB indivisible chunk that no embedding
-    # model will accept.
-    - "**/generated/**"
-    - "**/*.generated.*"
+    - ".claude/**"
+
+- name: yule-api
+  path: /Users/dimez/brightmesh.studio/yule-api
+  project: yule
+  source_type: code
+  repo: yule-api
+  include:
+    - "src/**/*.ts"
+    - "test/**/*.ts"
+    - "**/*.prisma"
+    - "**/*.md"
+
+# Same project tag as yule-api, so one scoped search spans client and backend.
+- name: yule-app
+  path: /Users/dimez/brightmesh.studio/yule-financials-rn-app
+  project: yule
+  source_type: code
+  repo: yule-financials-rn-app
+  include:
+    - "src/**/*.ts"
+    - "src/**/*.tsx"
+    - "docs/**/*.md"
+    - "db-schemas/**/*.prisma"
+    - "*.md"
+  exclude:
+    - "ios/**"
+    - "android/**"
+    - "**/.expo/**"
+
+- name: pantrypal
+  path: /Users/dimez/brightmesh.studio/pantrypal-mono
+  project: pantrypal
+  source_type: code
+  repo: pantrypal-mono
+  include:
+    - "apps/**/*.ts"
+    - "apps/**/*.tsx"
+    - "packages/**/*.ts"
+    - "packages/**/*.tsx"
+    - "**/*.prisma"
+    - "**/*.md"
