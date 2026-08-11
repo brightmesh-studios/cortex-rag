@@ -413,7 +413,15 @@ async def ingest_source(
         live=live,
         path_matcher=source.matcher(),
     )
-    await coco.mount_each(process_file, walker.items(), source, table)
+    # Keyed by source name: the default subpath is the function name, so every
+    # repo's root README.md would mount to the same path.
+    await coco.mount_each(
+        coco.component_subpath("process_file", source.name),
+        process_file,
+        walker.items(),
+        source,
+        table,
+    )
 
 
 @coco.fn
