@@ -296,6 +296,28 @@ def _shape(row: dict) -> dict:
     return shaped
 
 
+_POOL: asyncpg.Pool | None = None
+_POOL_LOCK = asyncio.Lock()
+
+
+async def _get_pool() -> asyncpg.Pool:
+    """Return the shared pool, creating it on first use."""
+    global _POOL
+    if _POOL is None:
+        async with _POOL_LOCK:
+            if _POOL is None:
+                _POOL = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
+    return _POOL
+
+
+async def close_pool() -> None:
+    """Close the shared pool. For short-lived callers; the server keeps it open."""
+    global _POOL
+    if _POOL is not None:
+        await _POOL.close()
+        _POOL = None
+
+
 async def search(
     question: str,
     k: int = TOP_K,
@@ -322,49 +344,43 @@ async def search(
     Returns:
         list[dict]: Hits with source, heading, content, score and location metadata.
     """
-    pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=2)
-    try:
-        async with pool.acquire() as conn:
-            vector: list[float] | None = None
+    pool = await _get_pool()
 
-            if mode == "fulltext":
-                ranked = await _fulltext_hits(conn, question, project, source_type, CANDIDATES)
+    async with pool.acquire() as conn:
+        vector: list[float] | None = None
+
+        if mode == "fulltext":
+            ranked = await _fulltext_hits(conn, question, project, source_type, CANDIDATES)
+        else:
+            vector = await build_embedder().embed_query(question)
+            vector_hits = await _vector_hits(conn, vector, project, source_type, CANDIDATES)
+
+            if mode == "vector":
+                ranked = vector_hits
             else:
-                vector = await build_embedder().embed_query(question)
-                vector_hits = await _vector_hits(
-                    conn, vector, project, source_type, CANDIDATES
+                fulltext_hits = await _fulltext_hits(
+                    conn, question, project, source_type, CANDIDATES
                 )
+                lists = [(vector_hits, 1.0), (fulltext_hits, 1.0)]
 
-                if mode == "vector":
-                    ranked = vector_hits
-                else:
-                    fulltext_hits = await _fulltext_hits(
-                        conn, question, project, source_type, CANDIDATES
+                # Note-only: the hub signal does not exist for code. See HUB_WEIGHT.
+                if source_type == "note":
+                    candidates = list(
+                        {r["id"]: r for r in vector_hits + fulltext_hits}.values()
                     )
-                    lists = [(vector_hits, 1.0), (fulltext_hits, 1.0)]
+                    inbound = await _inbound_counts(conn, [r["path"] for r in candidates])
+                    lists.append((_hub_ranked(candidates, inbound), HUB_WEIGHT))
 
-                    # Note-only: the hub signal does not exist for code. See HUB_WEIGHT.
-                    if source_type == "note":
-                        candidates = list(
-                            {r["id"]: r for r in vector_hits + fulltext_hits}.values()
-                        )
-                        inbound = await _inbound_counts(
-                            conn, [r["path"] for r in candidates]
-                        )
-                        lists.append((_hub_ranked(candidates, inbound), HUB_WEIGHT))
+                ranked = _fuse(*lists)
 
-                    ranked = _fuse(*lists)
+        hits = _cap_per_file(_demote_archived(ranked), k)
 
-            hits = _cap_per_file(_demote_archived(ranked), k)
+        if expand_links and vector is not None:
+            hits += await _expand_via_links(
+                conn, vector, hits, project, exclude={h["path"] for h in hits}
+            )
 
-            if expand_links and vector is not None:
-                hits += await _expand_via_links(
-                    conn, vector, hits, project, exclude={h["path"] for h in hits}
-                )
-
-            return [_shape(row) for row in hits]
-    finally:
-        await pool.close()
+        return [_shape(row) for row in hits]
 
 
 def _main() -> None:
@@ -383,16 +399,20 @@ def _main() -> None:
     )
     args = parser.parse_args()
 
-    hits = asyncio.run(
-        search(
-            args.question,
-            k=args.top_k,
-            project=args.project,
-            source_type=args.source_type,
-            mode=args.mode,
-            expand_links=not args.no_expand,
-        )
-    )
+    async def run() -> list[dict]:
+        try:
+            return await search(
+                args.question,
+                k=args.top_k,
+                project=args.project,
+                source_type=args.source_type,
+                mode=args.mode,
+                expand_links=not args.no_expand,
+            )
+        finally:
+            await close_pool()
+
+    hits = asyncio.run(run())
 
     if not hits:
         print("No matches. Has flow.py been run?")

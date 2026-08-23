@@ -52,7 +52,7 @@ DERIVED_DENYLIST = [
     "**/graphify-out/**",
 ]
 
-CONFIG_PATH = Path(os.getenv("SOURCES_CONFIG", Path(__file__).parent.parent / "sources.yaml"))
+DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "sources.yaml"
 
 
 @dataclass(frozen=True)
@@ -102,14 +102,19 @@ class Source:
         )
 
 
-def load_sources(config_path: Path = CONFIG_PATH) -> list[Source]:
+def load_sources(config_path: Path | None = None) -> list[Source]:
     """
     Read sources.yaml into Source records.
+
+    SOURCES_CONFIG is read here, not at import, so a value set in .env applies.
 
     Raises:
         ValueError: If a path still contains an unexpanded variable.
         FileNotFoundError: If a configured source path does not exist.
     """
+    if config_path is None:
+        config_path = Path(os.getenv("SOURCES_CONFIG") or DEFAULT_CONFIG_PATH)
+
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
     sources = []

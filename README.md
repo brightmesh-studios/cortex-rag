@@ -132,6 +132,12 @@ Ports bind to loopback by default. Behind a reverse proxy on a shared Docker net
 
 Keep repositories current with a scheduled `git pull` and re-run the ingest afterwards. There is nothing to watch for in between, so the one-shot run is a better fit than `--live`.
 
+The containers run as uid `10001`, so `DATA_ROOT` has to be writable by it:
+
+```bash
+sudo mkdir -p "$DATA_ROOT/cocoindex_state" && sudo chown -R 10001:10001 "$DATA_ROOT/cocoindex_state"
+```
+
 ---
 
 ## Layout

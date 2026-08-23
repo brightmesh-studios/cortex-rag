@@ -265,11 +265,24 @@ def _cap_size(chunks: list) -> list[tuple[str, int]]:
             capped.append((text, chunk.start.line))
             continue
 
-        # Slicing on characters is safe: MAX_CHUNK_BYTES leaves room for multi-byte.
-        for offset in range(0, len(text), MAX_CHUNK_BYTES):
-            piece = text[offset : offset + MAX_CHUNK_BYTES]
-            if piece.strip():
-                capped.append((piece, chunk.start.line))
+        # Accumulate by encoded size: MAX_CHUNK_BYTES is bytes, and slicing by
+        # character count would let multi-byte text through at several times the cap.
+        piece: list[str] = []
+        size = 0
+
+        for char in text:
+            width = len(char.encode())
+            if piece and size + width > MAX_CHUNK_BYTES:
+                joined = "".join(piece)
+                if joined.strip():
+                    capped.append((joined, chunk.start.line))
+                piece, size = [], 0
+            piece.append(char)
+            size += width
+
+        joined = "".join(piece)
+        if joined.strip():
+            capped.append((joined, chunk.start.line))
 
     return capped
 

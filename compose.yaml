@@ -6,7 +6,7 @@ services:
     container_name: cortex-postgres
     environment:
       POSTGRES_USER: cortex
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cortex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: cortex
     ports:
       - "${POSTGRES_PUBLISH:-127.0.0.1:5433}:5432"
@@ -23,10 +23,11 @@ services:
   ingest:
     build: .
     image: cortex-rag
+    command: ["python", "src/flow.py"]
     profiles: ["ingest"]
     env_file: [.env]
     environment:
-      DATABASE_URL: postgresql://cortex:${POSTGRES_PASSWORD:-cortex}@postgres:5432/cortex
+      DATABASE_URL: postgresql://cortex:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/cortex
       COCOINDEX_DB: /state
       CORTEX_ROOT: /repos
     volumes:
@@ -44,7 +45,7 @@ services:
     command: ["python", "src/server.py"]
     env_file: [.env]
     environment:
-      DATABASE_URL: postgresql://cortex:${POSTGRES_PASSWORD:-cortex}@postgres:5432/cortex
+      DATABASE_URL: postgresql://cortex:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/cortex
       MCP_HOST: 0.0.0.0
       MCP_PORT: 18432
     ports:

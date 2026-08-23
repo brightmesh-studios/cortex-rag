@@ -18,7 +18,7 @@ from pathlib import Path
 
 # Fenced and inline code are stripped before parsing, otherwise JavaScript such as
 # `[[...coords, coords[0]]` parses as a link.
-_FENCE_RE = re.compile(r"```.*?```", re.S)
+_FENCE_RE = re.compile(r"```.*?```|~~~.*?~~~", re.S)
 _INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 _LINK_RE = re.compile(r"\[\[([^\[\]]+?)\]\]")
 

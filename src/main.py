@@ -17,7 +17,7 @@ import os
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
-from query import search
+from query import close_pool, search
 
 load_dotenv()
 
@@ -78,7 +78,13 @@ def _main() -> None:
     parser.add_argument("--source-type", default=None, choices=["note", "code"])
     args = parser.parse_args()
 
-    asyncio.run(ask(args.question, args.top_k, args.project, args.source_type))
+    async def run() -> None:
+        try:
+            await ask(args.question, args.top_k, args.project, args.source_type)
+        finally:
+            await close_pool()
+
+    asyncio.run(run())
 
 
 if __name__ == "__main__":

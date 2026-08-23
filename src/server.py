@@ -9,6 +9,7 @@ Usage:
 """
 
 import os
+from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
 from query import search
@@ -26,7 +27,7 @@ async def search_vault(
     top_k: int = 5,
     project: str | None = None,
     source_type: str | None = None,
-    mode: str = "hybrid",
+    mode: Literal["hybrid", "vector", "fulltext"] = "hybrid",
 ) -> list[dict]:
     """
     Search the Cortex knowledge index for relevant notes and source code.
