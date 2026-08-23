@@ -22,7 +22,7 @@ from cocoindex.resources.file import PatternFilePathMatcher
 # Patterns target file forms that *carry* secrets, not filenames that merely
 # mention them. Loose matching on "*secret*"/"*credentials*" was rejected: it
 # excludes source files whose subject is credential handling — e.g.
-# apps/api/src/common/payfast/platform-credentials.ts, the PayFast crypto seam —
+# a platform-credentials.ts holding a payment gateway's signing logic —
 # which hold logic worth indexing, not keys. Over-exclusion loses knowledge
 # silently, which is its own failure mode.
 SECRET_DENYLIST = [

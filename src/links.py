@@ -63,8 +63,8 @@ def _nearest(candidates: list[str], source_rel: str) -> str:
     """
     Pick the candidate closest to the source note in the folder tree.
 
-    Bare-name links are ambiguous — `auth.md` exists under both
-    01-projects/pantrypal/api/ and 01-projects/brightmes-pms/api/. Obsidian
+    Bare-name links are ambiguous: `auth.md` can exist under two different
+    projects' `api/` folders. Obsidian
     resolves by proximity, and so must this: taking the first match sends roughly
     half of the ambiguous links into the wrong project's notes.
     """

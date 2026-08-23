@@ -5,7 +5,7 @@ Retrieves the most relevant chunks, sends them to a model on OpenRouter, and
 prints the answer. For retrieval alone, use query.py.
 
 Usage:
-    python src/main.py "How does a vendor get approved on Capsul?"
+    python src/main.py "how does a user get onboarded?"
 """
 
 from __future__ import annotations

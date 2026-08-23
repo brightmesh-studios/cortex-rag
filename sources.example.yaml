@@ -1,0 +1,47 @@
+- name: vault
+  path: ${CORTEX_ROOT}/vault
+  project: shared
+  source_type: note
+  include:
+    - "**/*.md"
+  exclude:
+    - "00-templates/**"
+    - "**/.obsidian/**"
+  project_map:
+    01-projects/my-app: my-app
+    01-projects/other-thing: other-thing
+  archived_prefixes:
+    - "04-archive/"
+
+- name: my-app-api
+  path: ${CORTEX_ROOT}/my-app-api
+  project: my-app
+  source_type: code
+  repo: my-app-api
+  include:
+    - "src/**/*.ts"
+    - "**/*.prisma"
+    - "**/*.md"
+
+- name: my-app-web
+  path: ${CORTEX_ROOT}/my-app-web
+  project: my-app
+  source_type: code
+  repo: my-app-web
+  include:
+    - "src/**/*.ts"
+    - "src/**/*.tsx"
+    - "*.md"
+  exclude:
+    - "ios/**"
+    - "android/**"
+
+- name: my-app-api-v1
+  path: ${CORTEX_ROOT}/my-app-api-v1
+  project: my-app
+  source_type: code
+  repo: my-app-api-v1
+  archived: true
+  include:
+    - "src/**/*.ts"
+    - "**/*.md"

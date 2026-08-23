@@ -9,7 +9,9 @@ data/
 
 # Machine-specific deployment
 compose.override.yaml
-sources.local.yaml
+
+# Real source list. Holds project and client names; this repo is public.
+sources.yaml
 
 # Python cache
 __pycache__/

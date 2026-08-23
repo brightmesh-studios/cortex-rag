@@ -32,9 +32,10 @@ Requires Docker and an [OpenRouter](https://openrouter.ai) key.
 
 ```bash
 cp .env.example .env
+cp sources.example.yaml sources.yaml
 ```
 
-Set `OPENROUTER_API_KEY` and point `CORTEX_ROOT` at the directory holding your vault and repositories. Then:
+Set `OPENROUTER_API_KEY` and point `CORTEX_ROOT` at the directory holding your vault and repositories. List those directories in `sources.yaml`, which is gitignored. Then:
 
 ```bash
 docker compose up -d postgres mcp
@@ -53,7 +54,7 @@ docker compose run --rm ingest python src/query.py "how does billing work"
 
 ## Configuring what gets indexed
 
-`sources.yaml` lists one entry per walked directory. Paths resolve `${CORTEX_ROOT}` at load time, so the same file works on a laptop and in a container.
+`sources.yaml` lists one entry per walked directory. It is gitignored, since a real one names your projects and clients; `sources.example.yaml` shows the shape. Paths resolve `${CORTEX_ROOT}` at load time, so the same file works on a laptop and in a container.
 
 ```yaml
 - name: my-api
@@ -66,17 +67,17 @@ docker compose run --rm ingest python src/query.py "how does billing work"
     - "**/*.md"
 ```
 
-| Key | Purpose |
-| --- | --- |
-| `project` | Scope tag. Lets one search span a repo and its notes |
-| `source_type` | `note` or `code` |
-| `project_map` | Per-path project override, for a vault holding several projects |
-| `archived_prefixes` | Paths whose content is superseded. Indexed, demoted |
-| `archived` | The whole source is superseded |
+| Key                 | Purpose                                                         |
+| ------------------- | --------------------------------------------------------------- |
+| `project`           | Scope tag. Lets one search span a repo and its notes            |
+| `source_type`       | `note` or `code`                                                |
+| `project_map`       | Per-path project override, for a vault holding several projects |
+| `archived_prefixes` | Paths whose content is superseded. Indexed, demoted             |
+| `archived`          | The whole source is superseded                                  |
 
 Two denylists in `src/sources.py` are appended to every source and always win over `include`: `SECRET_DENYLIST` blocks `.env`, keys and certificates; `DERIVED_DENYLIST` blocks build output for code sources.
 
-For a machine whose checkout is laid out differently, point `SOURCES_CONFIG` at a local copy rather than editing the committed file.
+`SOURCES_CONFIG` overrides the path, for a machine whose checkout is laid out differently.
 
 ---
 
@@ -99,8 +100,8 @@ The `search_vault` tool takes `question`, `top_k`, `project`, `source_type` and 
 ### From the terminal
 
 ```bash
-python src/query.py "payfast tokenisation" --project pms --source-type code
-python src/main.py "how does a vendor get approved on Capsul?"
+python src/query.py "webhook signature validation" --project my-app --source-type code
+python src/main.py "how does a user get onboarded?"
 ```
 
 `query.py` returns ranked chunks. `main.py` sends them to a model and answers.
@@ -135,12 +136,12 @@ Keep repositories current with a scheduled `git pull` and re-run the ingest afte
 
 ## Layout
 
-| File | Role |
-| --- | --- |
-| `src/flow.py` | Ingestion pipeline |
-| `src/sources.py` | Source config and denylists |
+| File              | Role                                        |
+| ----------------- | ------------------------------------------- |
+| `src/flow.py`     | Ingestion pipeline                          |
+| `src/sources.py`  | Source config and denylists                 |
 | `src/embedder.py` | OpenRouter embeddings, batched with retries |
-| `src/links.py` | Wikilink graph extraction |
-| `src/query.py` | Hybrid retrieval and CLI |
-| `src/server.py` | MCP server |
-| `src/main.py` | Ask a question, get an answer |
+| `src/links.py`    | Wikilink graph extraction                   |
+| `src/query.py`    | Hybrid retrieval and CLI                    |
+| `src/server.py`   | MCP server                                  |
+| `src/main.py`     | Ask a question, get an answer               |

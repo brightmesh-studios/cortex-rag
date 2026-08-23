@@ -31,6 +31,7 @@ services:
       CORTEX_ROOT: /repos
     volumes:
       - ${CORTEX_ROOT:?set CORTEX_ROOT to the directory holding the source repositories}:/repos:ro
+      - ./sources.yaml:/app/sources.yaml:ro
       - ${DATA_ROOT:-./data}/cocoindex_state:/state
     depends_on:
       postgres:

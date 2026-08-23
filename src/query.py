@@ -62,7 +62,7 @@ EXPAND_FROM = 3
 EXPAND_PER_HIT = 2
 
 # Notes linking to more than this are indexes and changelogs, not topical
-# references — brightmesh-index.md links to 162 notes and progress.md to 117, so a
+# references: a project index note links to 162 notes and its progress note to 117, so a
 # single edge from either carries no signal. Measured distribution: 310 of 329
 # linking notes have 10 or fewer outbound links, and only 6 exceed 25.
 MAX_SOURCE_OUT_DEGREE = 20
@@ -75,7 +75,7 @@ Mode = Literal["hybrid", "vector", "fulltext"]
 
 # Multiplier applied to archived chunks after fusion. Demotes rather than removes:
 # superseded planning notes still answer "what did we consider before", but an
-# archived PayFast plan was outranking the current billing reference.
+# archived payment-integration plan was outranking the current billing reference.
 ARCHIVE_PENALTY = 0.35
 
 _SELECT = """
