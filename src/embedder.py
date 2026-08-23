@@ -87,9 +87,7 @@ class OpenRouterEmbedder(coco_schema.VectorSchemaProvider):
 
     def __init__(self, model: str, api_key: str, base_url: str = OPENROUTER_BASE_URL) -> None:
         self._model = model
-        # An explicit timeout is load-bearing: the SDK default is 600s, and a
-        # request that never returns stalls the whole ingest silently at 0% CPU
-        # with no error to retry on. 60s is generous for a 64-item batch.
+        # The SDK default is 600s; a hung request stalls the ingest with nothing to retry.
         self._client = AsyncOpenAI(
             api_key=api_key,
             base_url=base_url,
@@ -109,9 +107,7 @@ class OpenRouterEmbedder(coco_schema.VectorSchemaProvider):
         """Embed a batch, retrying the upstream throttle with exponential backoff."""
         response = await self._client.embeddings.create(model=self._model, input=texts)
 
-        # OpenRouter's throttled 200 has no usable `data`; normalise it into the
-        # ValueError signature `_is_upstream_rate_limit` recognises so the retry
-        # above engages instead of the caller seeing an opaque parse failure.
+        # OpenRouter's throttled 200 has no usable `data`. Normalise it so the retry engages.
         data = getattr(response, "data", None)
         if not data:
             raise ValueError("No embedding data received")
@@ -140,10 +136,7 @@ class OpenRouterEmbedder(coco_schema.VectorSchemaProvider):
         try:
             vectors = await self._call(texts)
         except Exception as exc:
-            # One rejected input (e.g. over the model's token limit) would
-            # otherwise fail every other chunk batched alongside it. Ask the
-            # engine to halve the batch and retry so the damage is isolated to
-            # the offending chunk; at size 1 the engine re-raises the original.
+            # Halve and retry, so one rejected input does not fail its whole batch.
             if _is_batch_composition_error(exc):
                 raise coco.RetryWithSmallerBatch() from exc
             raise

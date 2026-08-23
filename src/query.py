@@ -33,49 +33,32 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://cortex:cortex@localhost:5433/cortex")
 TOP_K = int(os.getenv("TOP_K", "5"))
 
-# How many candidates each retriever contributes before fusion. Wider than the
-# final k so fusion has room to disagree and reorder.
+# Wider than the final k so fusion has room to disagree and reorder.
 CANDIDATES = 50
 
-# Reciprocal rank fusion smoothing constant. Higher values flatten the influence
-# of a single retriever's top rank, so agreement across retrievers matters more
-# than one strong vote.
+# RRF smoothing. Higher flattens any one retriever's top rank.
 RRF_K = 60
 
 # Cap per file so one heavily-chunked document cannot monopolise the results.
 MAX_PER_FILE = 3
 
-# Weight on the hub list when fusing, applied ONLY to note-restricted searches.
-#
-# Inbound link counts exist for notes and never for code, so adding this list to a
-# mixed search is a note-only boost that pushes code down. Measured over 14
-# questions: enabling it on mixed search cut code share from 38% to 12%, and on
-# implementation questions ("which service escalates dunning stages?") from 44% to
-# 15%, with code falling out of the top slot entirely. Among notes alone the signal
-# is sound — a note with 97 inbound links is one the vault treats as canonical —
-# so it is kept for source_type="note" rather than discarded.
+# Note-restricted searches only. Inbound link counts exist for notes and never
+# for code, so applying this to a mixed search silently pushes code down.
 HUB_WEIGHT = 0.5
 
-# How many top note hits get their wikilinked neighbours pulled in, and how many
-# neighbours each may contribute.
+# Top note hits expanded, and neighbours taken from each.
 EXPAND_FROM = 3
 EXPAND_PER_HIT = 2
 
-# Notes linking to more than this are indexes and changelogs, not topical
-# references: a project index note links to 162 notes and its progress note to 117, so a
-# single edge from either carries no signal. Measured distribution: 310 of 329
-# linking notes have 10 or fewer outbound links, and only 6 exceed 25.
+# Above this a note is an index or changelog, so a single edge carries no signal.
 MAX_SOURCE_OUT_DEGREE = 20
 
-# A linked note still has to be about the question. Without this floor, expansion
-# returns whatever the neighbour happens to contain.
+# A linked note still has to be about the question.
 EXPAND_MIN_SCORE = 0.45
 
 Mode = Literal["hybrid", "vector", "fulltext"]
 
-# Multiplier applied to archived chunks after fusion. Demotes rather than removes:
-# superseded planning notes still answer "what did we consider before", but an
-# archived payment-integration plan was outranking the current billing reference.
+# Demotes archived chunks after fusion rather than removing them.
 ARCHIVE_PENALTY = 0.35
 
 _SELECT = """
@@ -303,9 +286,7 @@ def _shape(row: dict) -> dict:
         "start_line": row["start_line"],
     }
 
-    # Link-expanded rows carry cosine similarity while fused rows carry an RRF
-    # score, and the two are not on the same scale. Label which is which rather
-    # than presenting one number as if it were comparable.
+    # Linked rows carry cosine similarity, fused rows an RRF score. Not comparable.
     if row.get("via"):
         shaped["via"] = row["via"]
         shaped["retrieval"] = "linked"
@@ -362,9 +343,7 @@ async def search(
                     )
                     lists = [(vector_hits, 1.0), (fulltext_hits, 1.0)]
 
-                    # Note-only searches can safely use the link-graph hub prior;
-                    # a mixed search cannot, because the signal exists for notes
-                    # and never for code (see HUB_WEIGHT).
+                    # Note-only: the hub signal does not exist for code. See HUB_WEIGHT.
                     if source_type == "note":
                         candidates = list(
                             {r["id"]: r for r in vector_hits + fulltext_hits}.values()

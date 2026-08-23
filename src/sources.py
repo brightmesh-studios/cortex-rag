@@ -16,15 +16,7 @@ from pathlib import Path
 import yaml
 from cocoindex.resources.file import PatternFilePathMatcher
 
-# Applied to every source, always. An embedded secret is unrecoverable: it lands
-# in the vector store and then in every future search result.
-#
-# Patterns target file forms that *carry* secrets, not filenames that merely
-# mention them. Loose matching on "*secret*"/"*credentials*" was rejected: it
-# excludes source files whose subject is credential handling — e.g.
-# a platform-credentials.ts holding a payment gateway's signing logic —
-# which hold logic worth indexing, not keys. Over-exclusion loses knowledge
-# silently, which is its own failure mode.
+# Matches file forms that carry secrets, not filenames that merely mention them.
 SECRET_DENYLIST = [
     "**/.env",
     "**/.env.*",
@@ -44,8 +36,7 @@ SECRET_DENYLIST = [
     "**/.git/**",
 ]
 
-# Derived output. Code sources only — the vault is prose, and a note named
-# CHANGELOG.md would be dropped.
+# Code sources only: in a vault, a note named CHANGELOG.md would be dropped.
 DERIVED_DENYLIST = [
     "**/node_modules/**",
     "**/dist/**",
@@ -80,17 +71,12 @@ class Source:
     repo: str | None = None
     include: tuple[str, ...] = ()
     exclude: tuple[str, ...] = ()
-    # Path prefix -> project, longest match wins. A vault holding several projects
-    # cannot be tagged with one project; without this, a generic question matches
-    # every project's equivalent note and there is nothing to disambiguate on.
     project_map: tuple[tuple[str, str], ...] = ()
-    # Path prefixes whose content is superseded. Kept and searchable, but demoted.
     archived_prefixes: tuple[str, ...] = ()
-    # Whole source superseded, e.g. a repo replaced by a rewrite. Same treatment.
     archived: bool = False
 
     def project_for(self, rel_path: str) -> str:
-        """Resolve a file's project from its path, falling back to `project`."""
+        """Resolve a file's project from its path prefix, longest match wins."""
         best = ""
         found = self.project
         for prefix, project in self.project_map:
@@ -121,8 +107,8 @@ def load_sources(config_path: Path = CONFIG_PATH) -> list[Source]:
     Read sources.yaml into Source records.
 
     Raises:
-        FileNotFoundError: If a configured source path does not exist — better to
-            fail loudly than to silently index nothing.
+        ValueError: If a path still contains an unexpanded variable.
+        FileNotFoundError: If a configured source path does not exist.
     """
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 

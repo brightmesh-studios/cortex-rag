@@ -5,8 +5,7 @@ Walks every source in sources.yaml, splits files into language-aware chunks,
 embeds them via OpenRouter, and upserts them into one `cortex_chunks` table
 tagged with project/source_type/repo so search can be scoped.
 
-Replaces ingest.py's hand-rolled MD5 change tracking: CocoIndex owns incremental
-sync, so re-running only re-embeds what actually changed.
+CocoIndex owns incremental sync, so re-running only re-embeds what changed.
 
 Usage:
     python src/flow.py            # one-shot update
@@ -42,8 +41,7 @@ from sources import Source, load_sources
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("flow")
 
-# One line per embedding request would be tens of thousands of lines on a full
-# ingest, burying CocoIndex's own progress output.
+# One line per embedding request would bury CocoIndex's own progress output.
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 load_dotenv()
@@ -52,25 +50,21 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://cortex:cortex@localhost:5
 TABLE_NAME = "cortex_chunks"
 LINKS_TABLE = "cortex_links"
 
-# CocoIndex's own incremental-sync and memoization state (local LMDB). This is
-# what replaces ingest.py's .ingest_state.json; it is derived, never committed.
+# CocoIndex's incremental-sync and memoization state (local LMDB). Derived.
 os.environ.setdefault(
     "COCOINDEX_DB",
     str(Path(__file__).parent.parent / "cocoindex_state"),
 )
 
-# chunk_size is in BYTES here (CocoIndex), unlike ingest.py's character-based
-# splitter — roughly comparable for mostly-ASCII notes and code.
+# Bytes, not characters.
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 100
 
-# chunk_size is a target, not a ceiling: tree-sitter will not break an
-# indivisible syntactic unit, so a single huge declaration can exceed it and be
-# rejected by the embedding model's token limit. Hard-split anything past this.
+# chunk_size is a target, not a ceiling: tree-sitter will not split an indivisible
+# unit, so a huge declaration can exceed the model's token limit. Hard-split here.
 MAX_CHUNK_BYTES = 6000
 
-# Prepend structural context to chunks before embedding. Off only for A/B
-# measurement — toggling it changes every embedding, so it forces a full re-embed.
+# Toggling this changes every embedding and forces a full re-embed.
 CONTEXT_PREFIX = os.getenv("CONTEXT_PREFIX", "1") != "0"
 
 PG_DB = coco.ContextKey[asyncpg.Pool]("cortex_db")
@@ -80,9 +74,8 @@ _SPLITTER = RecursiveSplitter()
 
 _HEADING_RE = re.compile(r"^(#{1,3})\s+(.*?)\s*#*$")
 
-# Generated full-text column + GIN index, which CocoIndex's schema inference has
+# Generated full-text column and GIN index, which CocoIndex's schema inference has
 # no concept of. Attached to the table so CocoIndex manages its lifecycle.
-# This is what makes hybrid search possible without a second system.
 FULLTEXT_SETUP_SQL = f"""
 ALTER TABLE {TABLE_NAME}
     ADD COLUMN IF NOT EXISTS content_tsv tsvector
@@ -272,8 +265,7 @@ def _cap_size(chunks: list) -> list[tuple[str, int]]:
             capped.append((text, chunk.start.line))
             continue
 
-        # Slice on characters; MAX_CHUNK_BYTES is a conservative enough budget
-        # that multi-byte characters cannot push a slice over the token limit.
+        # Slicing on characters is safe: MAX_CHUNK_BYTES leaves room for multi-byte.
         for offset in range(0, len(text), MAX_CHUNK_BYTES):
             piece = text[offset : offset + MAX_CHUNK_BYTES]
             if piece.strip():
@@ -329,10 +321,8 @@ async def process_file(
     else:
         embed_texts = [body for body, _ in capped]
 
-    # Embed concurrently, not in a sequential await loop. The embedder batches
-    # *concurrent* calls (@coco.fn.as_async(batching=True)); awaiting one at a
-    # time would make every call its own batch of one — 590 round-trips for a
-    # large note instead of ~10.
+    # The embedder batches *concurrent* calls. A sequential await loop would make
+    # every call its own batch of one.
     embeddings = await asyncio.gather(*(_EMBEDDER.embed(t) for t in embed_texts))
 
     project = source.project_for(rel_path)
@@ -340,8 +330,7 @@ async def process_file(
 
     now = datetime.now(timezone.utc)
     for index, ((content, start_line), embedding) in enumerate(zip(capped, embeddings)):
-        # Stable id: same file + same position upserts rather than duplicating,
-        # which is the failure ingest.py's delete-before-write existed to avoid.
+        # Stable id: same file and position upserts rather than duplicating.
         chunk_id = hashlib.sha256(
             f"{source.name}:{rel_path}:{index}".encode()
         ).hexdigest()
