@@ -1,0 +1,16 @@
+# Copy to compose.override.yaml beside compose.yaml for a host running a reverse
+# proxy on a shared `edge` network. Create it once: docker network create edge
+services:
+  mcp:
+    networks:
+      default: {}
+      edge:
+        aliases: [cortex]
+
+  postgres:
+    ports: !reset []
+
+networks:
+  default:
+  edge:
+    external: true

@@ -1,8 +1,17 @@
 # Virtual environment
 .venv/
 
-# ChromaDB — local vector store, never commit this
+# Legacy Chroma store. Never commit: it holds embedded private source.
 chroma_db/
+
+# Container data: Postgres volume and CocoIndex state
+data/
+
+# Machine-specific deployment
+compose.override.yaml
+
+# Real source list. Holds project and client names; this repo is public.
+sources.yaml
 
 # Python cache
 __pycache__/
@@ -16,3 +25,6 @@ vault-sync.log
 
 # Mac
 .DS_Store
+
+# CocoIndex incremental-sync + memoization state — derived, always rebuildable
+cocoindex_state/

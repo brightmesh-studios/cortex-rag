@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.git/
+.DS_Store
+
+# Derived state. Rebuildable, and machine-specific.
+chroma_db/
+cocoindex_state/
+data/
+*.log
+
+# Private: project and client names. Mounted at runtime, never built in.
+sources.yaml
