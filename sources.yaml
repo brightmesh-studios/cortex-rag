@@ -59,13 +59,12 @@
     - "**/*.md"
     - "infra/**/*.tf"
 
-# Superseded by brightmesh-pms-mono, same `pms` tag so a scoped search spans both.
+# Same `pms` tag as brightmesh-pms-mono, so one scoped search spans both.
 - name: lema-api
   path: ${CORTEX_ROOT}/lema-api
   project: pms
   source_type: code
   repo: lema-api
-  archived: true
   include:
     - "src/**/*.ts"
     - "**/*.prisma"
@@ -132,7 +131,6 @@
   project: pantrypal
   source_type: code
   repo: pantrypal-simulator
-  archived: true
   include:
     - "**/*.ts"
     - "**/*.tsx"
