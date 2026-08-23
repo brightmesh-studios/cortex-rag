@@ -1,0 +1,54 @@
+name: cortex
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: cortex-postgres
+    environment:
+      POSTGRES_USER: cortex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cortex}
+      POSTGRES_DB: cortex
+    ports:
+      - "${POSTGRES_PUBLISH:-127.0.0.1:5433}:5432"
+    volumes:
+      - ${DATA_ROOT:-./data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cortex -d cortex"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Not started by `compose up`. Run with: docker compose run --rm ingest
+  ingest:
+    build: .
+    image: cortex-rag
+    profiles: ["ingest"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://cortex:${POSTGRES_PASSWORD:-cortex}@postgres:5432/cortex
+      COCOINDEX_DB: /state
+      CORTEX_ROOT: /repos
+    volumes:
+      - ${CORTEX_ROOT:?set CORTEX_ROOT to the directory holding the source repositories}:/repos:ro
+      - ${DATA_ROOT:-./data}/cocoindex_state:/state
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mcp:
+    build: .
+    image: cortex-rag
+    container_name: cortex-mcp
+    command: ["python", "src/server.py"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://cortex:${POSTGRES_PASSWORD:-cortex}@postgres:5432/cortex
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 18432
+    ports:
+      - "${MCP_PUBLISH:-127.0.0.1:18432}:18432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped

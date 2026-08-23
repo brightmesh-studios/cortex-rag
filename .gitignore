@@ -1,8 +1,15 @@
 # Virtual environment
 .venv/
 
-# ChromaDB — local vector store, never commit this
+# Legacy Chroma store. Never commit: it holds embedded private source.
 chroma_db/
+
+# Container data: Postgres volume and CocoIndex state
+data/
+
+# Machine-specific deployment
+compose.override.yaml
+sources.local.yaml
 
 # Python cache
 __pycache__/

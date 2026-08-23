@@ -6,13 +6,3 @@ numpy
 pyyaml
 python-dotenv
 mcp[cli]>=1.27.0
-fastapi
-uvicorn
-
-# Legacy Chroma pipeline (ingest.py) — dropped once the CocoIndex path is cut over
-langchain
-langchain-text-splitters
-langchain-chroma
-langchain-ollama
-langchain-openai
-chromadb

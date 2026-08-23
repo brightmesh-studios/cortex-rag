@@ -86,6 +86,8 @@ class Source:
     project_map: tuple[tuple[str, str], ...] = ()
     # Path prefixes whose content is superseded. Kept and searchable, but demoted.
     archived_prefixes: tuple[str, ...] = ()
+    # Whole source superseded, e.g. a repo replaced by a rewrite. Same treatment.
+    archived: bool = False
 
     def project_for(self, rel_path: str) -> str:
         """Resolve a file's project from its path, falling back to `project`."""
@@ -97,7 +99,9 @@ class Source:
         return found
 
     def is_archived(self, rel_path: str) -> bool:
-        """Whether a file lives under a superseded path."""
+        """Whether a file is superseded, by whole source or by path prefix."""
+        if self.archived:
+            return True
         return rel_path.startswith(self.archived_prefixes) if self.archived_prefixes else False
 
     def matcher(self) -> PatternFilePathMatcher:
@@ -124,7 +128,12 @@ def load_sources(config_path: Path = CONFIG_PATH) -> list[Source]:
 
     sources = []
     for entry in raw:
-        path = Path(entry["path"]).expanduser()
+        path = Path(os.path.expandvars(entry["path"])).expanduser()
+        if "$" in str(path):
+            raise ValueError(
+                f"source '{entry['name']}' path has an unset variable: {path}. "
+                "Set CORTEX_ROOT in .env."
+            )
         if not path.is_dir():
             raise FileNotFoundError(f"source '{entry['name']}' path does not exist: {path}")
 
@@ -139,6 +148,7 @@ def load_sources(config_path: Path = CONFIG_PATH) -> list[Source]:
                 exclude=tuple(entry.get("exclude", ())),
                 project_map=tuple(sorted(entry.get("project_map", {}).items())),
                 archived_prefixes=tuple(entry.get("archived_prefixes", ())),
+                archived=bool(entry.get("archived", False)),
             )
         )
 

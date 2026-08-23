@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.git/
+.DS_Store
+
+# Derived state. Rebuildable, and machine-specific.
+chroma_db/
+cocoindex_state/
+*.log
